@@ -4,22 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Vueltas GT7</title>
-    <link href="https://fonts.googleapis.com/css2?family=Aldrich&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #007bff;
-            --primary-dark-color: #0056b3;
-            --background-light: #f8f9fa;
-            --background-medium: #e9ecef;
-            --text-color: #343a40;
-            --border-color: #ced4da;
-            --shadow-color: rgba(0, 0, 0, 0.1);
-            --fastest-lap-bg: #d4edda;
+            /* Colores: Azul Oceánico y Grises */
+            --primary-color: #376893; /* Azul Oceánico */
+            --primary-light-color: #4a7ea4; /* Tono más claro de azul para hover */
+            --background-light: #F8F9FA; /* Gris muy claro para el fondo principal */
+            --background-medium: #E9ECEF; /* Gris medio para el fondo de filtros y filas pares */
+            --text-color: #343A40; /* Gris oscuro para el texto general */
+            --heading-color: #2F5374; /* Tono de azul un poco más oscuro para títulos */
+            --border-color: #CED4DA; /* Gris suave para bordes */
+            --shadow-color: rgba(0, 0, 0, 0.1); /* Sombra estándar */
+            --fastest-lap-bg: #D4EDDA; /* Mantenemos el verde para la vuelta más rápida */
             --fastest-lap-text: #155724;
-            /* Definimos la fuente principal para la mayoría del texto */
+            --error-color: #dc3545; /* Rojo para mensajes de error */
+
+            /* Nuevas Fuentes */
             --main-font: 'Roboto', sans-serif;
-            /* Definimos la fuente para los títulos y elementos clave, similar a Eurostile */
-            --display-font: 'Aldrich', sans-serif; 
+            --display-font: 'Montserrat', sans-serif; 
         }
 
         body {
@@ -32,8 +35,8 @@
         }
 
         h1, h2 {
-            font-family: var(--display-font); /* Aplicamos la fuente similar a Eurostile a los títulos */
-            color: var(--primary-dark-color);
+            font-family: var(--display-font); /* Montserrat para títulos */
+            color: var(--heading-color);
             text-align: center;
             margin-bottom: 25px;
             font-weight: 700;
@@ -74,7 +77,7 @@
             color: var(--text-color);
             background-color: #fff;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            font-family: var(--main-font); /* Mantener fuente legible para inputs */
+            font-family: var(--main-font); /* Roboto para inputs */
         }
 
         .form-group input[type="text"]:focus,
@@ -82,7 +85,7 @@
         .form-group select:focus,
         .form-group input[type="file"]:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(55, 104, 147, 0.25);
             outline: none;
         }
 
@@ -97,11 +100,11 @@
             font-weight: 500;
             transition: background-color 0.3s ease, transform 0.2s ease;
             margin-right: 15px;
-            font-family: var(--display-font); /* Aplicamos la fuente similar a Eurostile a los botones */
+            font-family: var(--display-font); /* Montserrat para botones */
         }
 
         button:hover {
-            background-color: var(--primary-dark-color);
+            background-color: var(--primary-light-color);
             transform: translateY(-2px);
         }
 
@@ -126,7 +129,7 @@
             box-shadow: 0 2px 8px var(--shadow-color);
             border-radius: 8px;
             overflow: hidden;
-            font-family: var(--main-font); /* Mantener fuente legible para la tabla */
+            font-family: var(--main-font); /* Roboto para la tabla */
         }
 
         table th, table td {
@@ -142,7 +145,7 @@
             position: sticky;
             top: 0;
             z-index: 1;
-            font-family: var(--display-font); /* Aplicamos la fuente similar a Eurostile a los encabezados de tabla */
+            font-family: var(--display-font); /* Montserrat para encabezados de tabla */
         }
 
         table tbody tr:nth-child(even) {
@@ -161,7 +164,7 @@
         }
         
         .error-message {
-            color: #dc3545;
+            color: var(--error-color);
             margin-top: 5px;
             font-size: 0.875em;
             font-weight: 500;
