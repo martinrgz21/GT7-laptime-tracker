@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Vueltas GT7</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1, h2 {
+            color: #0056b3;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select { /* Actualizado para incluir select */
+            width: calc(100% - 22px); /* Ajuste para el padding */
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group input[type="number"]:focus,
+        .form-group select:focus { /* Actualizado para incluir select */
+            border-color: #007bff;
+            outline: none;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .fastest-lap {
+            background-color: #d4edda; /* Green for fastest lap */
+            font-weight: bold;
+        }
+        .error-message {
+            color: red;
+            margin-top: -10px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Registro de Vueltas GT7</h1>
+
+        <h2>Registrar Nueva Vuelta</h2>
+        <div class="form-group">
+            <label for="nombrePiloto">Tu Nombre de Piloto:</label>
+            <input type="text" id="nombrePiloto" placeholder="Ej: MiNickEnGT7" required>
+        </div>
+        <div class="form-group">
+            <label for="circuito">Circuito:</label>
+            <select id="circuito" onchange="populateTrazadoSelect()" required>
+                <option value="">Selecciona un circuito</option>
+                </select>
+        </div>
+        <div class="form-group">
+            <label for="trazado">Trazado:</label>
+            <select id="trazado" required>
+                <option value="">Selecciona un trazado</option>
+                </select>
+        </div>
+        <div class="form-group">
+            <label for="marcaCoche">Marca del Coche:</label>
+            <input type="text" id="marcaCoche" placeholder="Ej: Porsche" required>
+        </div>
+        <div class="form-group">
+            <label for="modeloCoche">Modelo del Coche:</label>
+            <input type="text" id="modeloCoche" placeholder="Ej: 911 GT3 RS" required>
+        </div>
+        <div class="form-group">
+            <label for="anoCoche">Año del Coche:</label>
+            <input type="number" id="anoCoche" min="1900" max="2030" placeholder="Ej: 2022" required>
+        </div>
+        <div class="form-group">
+            <label for="prCoche">PR (Performance Rating):</label>
+            <input type="text" id="prCoche" placeholder="Ej: N400" required>
+        </div>
+        <div class="form-group">
+            <label for="tiempoVuelta">Tiempo de Vuelta (mm:ss:SSS):</label>
+            <input type="text" id="tiempoVuelta" pattern="[0-5]?\d:[0-5]?\d:\d{3}" placeholder="Ej: 01:30:123" required>
+            <div class="error-message" id="tiempoVueltaError"></div>
+        </div>
+        <button onclick="registrarVuelta()">Registrar Vuelta</button>
+    </div>
+
+    <div class="container">
+        <h2>Vueltas Registradas</h2>
+
+        <div class="filters">
+            <div class="form-group">
+                <label for="filterNombrePiloto">Filtrar por Piloto:</label>
+                <select id="filterNombrePiloto" onchange="aplicarFiltros()">
+                    <option value="">Todos los Pilotos</option>
+                    </select>
+            </div>
+            <div class="form-group">
+                <label for="filterCircuito">Filtrar por Circuito:</label>
+                <input type="text" id="filterCircuito" onkeyup="aplicarFiltros()" placeholder="Todos">
+            </div>
+            <div class="form-group">
+                <label for="filterMarcaCoche">Filtrar por Marca:</label>
+                <input type="text" id="filterMarcaCoche" onkeyup="aplicarFiltros()" placeholder="Todas">
+            </div>
+            <div class="form-group">
+                <label for="filterModeloCoche">Filtrar por Modelo:</label>
+                <input type="text" id="filterModeloCoche" onkeyup="aplicarFiltros()" placeholder="Todos">
+            </div>
+            <div class="form-group">
+                <label for="filterAnoCoche">Filtrar por Año:</label>
+                <input type="number" id="filterAnoCoche" onkeyup="aplicarFiltros()" placeholder="Todos">
+            </div>
+            <div class="form-group">
+                <label for="filterPrCoche">Filtrar por PR:</label>
+                <input type="text" id="filterPrCoche" onkeyup="aplicarFiltros()" placeholder="Todos">
+            </div>
+        </div>
+
+        <table id="tablaVueltas">
+            <thead>
+                <tr>
+                    <th>Piloto</th>
+                    <th>Circuito</th>
+                    <th>Trazado</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Año</th>
+                    <th>PR</th>
+                    <th>Tiempo</th>
+                    <th>Diferencia</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'gt7Vueltas';
+        let vueltas = [];
+
+        // Definición de circuitos y trazados
+        const circuitosGT7 = {
+            "Asia-Pacific": {
+                "Autopolis International Racing Course": [],
+                "Broad Bean Raceway": [],
+                "Fuji International Speedway": [],
+                "High Speed Ring": [],
+                "Kyoto Driving Park": ["Miyabi", "Yamagiwa", "Yamagiwa + Miyabi"],
+                "Mount Panorama": [],
+                "Suzuka Circuit": ["Suzuka Circuit East"],
+                "Tokyo Expressway": ["Central Inner Loop", "Central Outer Loop", "East Inner Loop", "East Outer Loop", "South Inner Loop", "South Outer Loop"],
+                "Tsukuba Circuit": []
+            },
+            "América": {
+                "Autódromo José Carlos Pace": [],
+                "Blue Moon Bay Speedway": [],
+                "Colorado Springs": [],
+                "Daytona International Speedway": ["Daytona Superspeedway", "Daytona Road Course"],
+                "Fisherman’s Ranch": [],
+                "Northern Isle Speedway": [],
+                "Trial Mountain Circuit": [],
+                "Special Stage Route X": [],
+                "WeatherTech Raceway Laguna Seca": [],
+                "Willow Springs International Raceway": ["Big Willow"]
+            },
+            "Europa": {
+                "Alsace – Village": [],
+                "Autodrome Lago Maggiore": [],
+                "Autodromo Nazionale Monza": [],
+                "Brands Hatch": [],
+                "Circuit de Barcelona-Catalunya": [],
+                "Circuit de la Sarthe": [],
+                "Circuit de Sainte-Croix": ["A", "B", "C"],
+                "Circuit de Spa-Francorchamps": [],
+                "Deep Forest Raceway": [],
+                "Dragon Trail": ["Gardens", "Seaside"],
+                "Goodwood Motor Circuit": [],
+                "Nürburgring": ["24h", "Nordschleife"],
+                "Red Bull Ring": [],
+                "Sardegna": ["Road Track – A", "Road Track – B", "Road Track – C"],
+                "Windmills": []
+            }
+        };
+
+        // Función para convertir tiempo de mm:ss:SSS a milisegundos
+        function tiempoAMilisegundos(tiempoStr) {
+            const parts = tiempoStr.split(':');
+            if (parts.length !== 3) return NaN;
+
+            const minutes = parseInt(parts[0], 10);
+            const seconds = parseInt(parts[1], 10);
+            const milliseconds = parseInt(parts[2], 10);
+
+            if (isNaN(minutes) || isNaN(seconds) || isNaN(milliseconds)) return NaN;
+
+            return (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
+        }
+
+        // Función para convertir milisegundos a mm:ss:SSS
+        function milisegundosATiempo(ms) {
+            if (isNaN(ms)) return 'N/A';
+
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = ms % 1000;
+
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(milliseconds).padStart(3, '0')}`;
+        }
+
+        // Cargar vueltas y poblar filtros al iniciar
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedVueltas = localStorage.getItem(STORAGE_KEY);
+            if (storedVueltas) {
+                vueltas = JSON.parse(storedVueltas);
+            }
+            populateCircuitoSelect(); // Cargar circuitos
+            populatePilotoFilter(); // Cargar pilotos para el filtro
+            mostrarVueltas();
+        });
+
+        // Función para poblar el dropdown de Circuitos
+        function populateCircuitoSelect() {
+            const circuitoSelect = document.getElementById('circuito');
+            circuitoSelect.innerHTML = '<option value="">Selecciona un circuito</option>'; // Restablecer
+
+            for (const region in circuitosGT7) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = region;
+                for (const circuitoName in circuitosGT7[region]) {
+                    const option = document.createElement('option');
+                    option.value = circuitoName;
+                    option.textContent = circuitoName;
+                    optgroup.appendChild(option);
+                }
+                circuitoSelect.appendChild(optgroup);
+            }
+            populateTrazadoSelect(); // Cargar trazados inicialmente (vacío o predeterminado)
+        }
+
+        // Función para poblar el dropdown de Trazados basado en el circuito seleccionado
+        function populateTrazadoSelect() {
+            const circuitoSelect = document.getElementById('circuito');
+            const trazadoSelect = document.getElementById('trazado');
+            const selectedCircuito = circuitoSelect.value;
+
+            trazadoSelect.innerHTML = '<option value="">Selecciona un trazado</option>'; // Restablecer
+
+            if (selectedCircuito) {
+                let trazados = [];
+                for (const region in circuitosGT7) {
+                    if (circuitosGT7[region][selectedCircuito]) {
+                        trazados = circuitosGT7[region][selectedCircuito];
+                        break;
+                    }
+                }
+
+                if (trazados.length > 0) {
+                    trazados.forEach(trazado => {
+                        const option = document.createElement('option');
+                        option.value = trazado;
+                        option.textContent = trazado;
+                        trazadoSelect.appendChild(option);
+                    });
+                } else {
+                    // Si no hay trazados específicos, el circuito es su propio trazado
+                    const option = document.createElement('option');
+                    option.value = selectedCircuito;
+                    option.textContent = selectedCircuito;
+                    trazadoSelect.appendChild(option);
+                    trazadoSelect.value = selectedCircuito; // Seleccionar automáticamente
+                }
+            }
+        }
+
+
+        function validarTiempo(tiempo) {
+            const regex = /^\d{2}:\d{2}:\d{3}$/; // mm:ss:SSS
+            return regex.test(tiempo);
+        }
+
+        function registrarVuelta() {
+            const nombrePiloto = document.getElementById('nombrePiloto').value.trim();
+            const circuito = document.getElementById('circuito').value.trim();
+            const trazado = document.getElementById('trazado').value.trim();
+            const marcaCoche = document.getElementById('marcaCoche').value.trim();
+            const modeloCoche = document.getElementById('modeloCoche').value.trim();
+            const anoCoche = document.getElementById('anoCoche').value.trim();
+            const prCoche = document.getElementById('prCoche').value.trim();
+            const tiempoVuelta = document.getElementById('tiempoVuelta').value.trim();
+            const tiempoVueltaError = document.getElementById('tiempoVueltaError');
+
+            // Limpiar errores previos
+            tiempoVueltaError.textContent = '';
+
+            if (!nombrePiloto || !circuito || !trazado || !marcaCoche || !modeloCoche || !anoCoche || !prCoche || !tiempoVuelta) {
+                alert('Por favor, rellena todos los campos.');
+                return;
+            }
+
+            if (!validarTiempo(tiempoVuelta)) {
+                tiempoVueltaError.textContent = 'Formato de tiempo incorrecto. Use mm:ss:SSS (ej: 01:30:123).';
+                return;
+            }
+
+            const nuevaVuelta = {
+                nombrePiloto: nombrePiloto,
+                circuito: circuito,
+                trazado: trazado,
+                marcaCoche: marcaCoche,
+                modeloCoche: modeloCoche,
+                anoCoche: parseInt(anoCoche, 10),
+                prCoche: prCoche,
+                tiempoVuelta: tiempoVuelta,
+                tiempoMilisegundos: tiempoAMilisegundos(tiempoVuelta)
+            };
+
+            vueltas.push(nuevaVuelta);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(vueltas));
+            limpiarFormulario();
+            populatePilotoFilter(); // Actualiza el filtro de piloto
+            mostrarVueltas();
+        }
+
+        function limpiarFormulario() {
+            // No limpiar el nombre de piloto automáticamente para facilitar la entrada repetida
+            document.getElementById('circuito').value = '';
+            document.getElementById('trazado').value = '';
+            document.getElementById('marcaCoche').value = '';
+            document.getElementById('modeloCoche').value = '';
+            document.getElementById('anoCoche').value = '';
+            document.getElementById('prCoche').value = '';
+            document.getElementById('tiempoVuelta').value = '';
+            populateTrazadoSelect(); // Restablece el trazado al limpiar el circuito
+        }
+
+        // Función para poblar el dropdown de pilotos para filtrar
+        function populatePilotoFilter() {
+            const filterPilotoSelect = document.getElementById('filterNombrePiloto');
+            // Guarda la selección actual para restablecerla después
+            const currentSelection = filterPilotoSelect.value;
+            filterPilotoSelect.innerHTML = '<option value="">Todos los Pilotos</option>'; // Restablecer
+
+            const pilotos = [...new Set(vueltas.map(vuelta => vuelta.nombrePiloto))]; // Obtener nombres únicos
+
+            pilotos.sort().forEach(piloto => { // Ordenar alfabéticamente
+                const option = document.createElement('option');
+                option.value = piloto;
+                option.textContent = piloto;
+                filterPilotoSelect.appendChild(option);
+            });
+            // Restablece la selección si el piloto todavía existe
+            if ([...pilotos].includes(currentSelection)) {
+                filterPilotoSelect.value = currentSelection;
+            }
+        }
+
+        function aplicarFiltros() {
+            mostrarVueltas();
+        }
+
+        function mostrarVueltas() {
+            const tbody = document.querySelector('#tablaVueltas tbody');
+            tbody.innerHTML = ''; // Limpiar la tabla
+
+            let vueltasFiltradas = [...vueltas]; // Copia de las vueltas para filtrar
+
+            const filterNombrePiloto = document.getElementById('filterNombrePiloto').value.trim();
+            const filterCircuito = document.getElementById('filterCircuito').value.toLowerCase().trim();
+            const filterMarcaCoche = document.getElementById('filterMarcaCoche').value.toLowerCase().trim();
+            const filterModeloCoche = document.getElementById('filterModeloCoche').value.toLowerCase().trim();
+            const filterAnoCoche = document.getElementById('filterAnoCoche').value.trim();
+            const filterPrCoche = document.getElementById('filterPrCoche').value.toLowerCase().trim();
+
+            if (filterNombrePiloto) {
+                vueltasFiltradas = vueltasFiltradas.filter(vuelta =>
+                    vuelta.nombrePiloto === filterNombrePiloto
+                );
+            }
+            if (filterCircuito) {
+                vueltasFiltradas = vueltasFiltradas.filter(vuelta =>
+                    vuelta.circuito.toLowerCase().includes(filterCircuito)
+                );
+            }
+            if (filterMarcaCoche) {
+                vueltasFiltradas = vueltasFiltradas.filter(vuelta =>
+                    vuelta.marcaCoche.toLowerCase().includes(filterMarcaCoche)
+                );
+            }
+            if (filterModeloCoche) {
+                vueltasFiltradas = vueltasFiltradas.filter(vuelta =>
+                    vuelta.modeloCoche.toLowerCase().includes(filterModeloCoche)
+                );
+            }
+            if (filterAnoCoche) {
+                vueltasFiltradas = vueltasFiltradas.filter(vuelta =>
+                    vuelta.anoCoche.toString() === filterAnoCoche
+                );
+            }
+            if (filterPrCoche) {
+                vueltasFiltradas = vueltasFiltradas.filter(vuelta =>
+                    vuelta.prCoche.toLowerCase().includes(filterPrCoche)
+                );
+            }
+
+            // Encontrar la vuelta más rápida entre las filtradas
+            let fastestLapMs = Infinity;
+            if (vueltasFiltradas.length > 0) {
+                fastestLapMs = Math.min(...vueltasFiltradas.map(v => v.tiempoMilisegundos));
+            }
+
+            vueltasFiltradas.forEach(vuelta => {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = vuelta.nombrePiloto;
+                row.insertCell().textContent = vuelta.circuito;
+                row.insertCell().textContent = vuelta.trazado;
+                row.insertCell().textContent = vuelta.marcaCoche;
+                row.insertCell().textContent = vuelta.modeloCoche;
+                row.insertCell().textContent = vuelta.anoCoche;
+                row.insertCell().textContent = vuelta.prCoche;
+                row.insertCell().textContent = vuelta.tiempoVuelta;
+
+                const diferenciaCell = row.insertCell();
+                if (vuelta.tiempoMilisegundos === fastestLapMs) {
+                    diferenciaCell.textContent = 'Más Rápida';
+                    row.classList.add('fastest-lap');
+                } else {
+                    const diferenciaMs = vuelta.tiempoMilisegundos - fastestLapMs;
+                    diferenciaCell.textContent = `+${milisegundosATiempo(diferenciaMs)}`;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
