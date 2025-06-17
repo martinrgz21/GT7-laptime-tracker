@@ -225,7 +225,7 @@
         </div>
         <div class="form-group">
             <label for="circuito">Track:</label>
-            <select id="circuito" onchange="populateTrazadoSelect()" required>
+            <select id="circuito" onchange="populateLayoutSelect()" required>
                 <option value="">Select a track</option>
             </select>
         </div>
@@ -412,7 +412,7 @@
                 }
                 trackSelect.appendChild(optgroup);
             }
-            populateLayoutSelect();
+            populateLayoutSelect(); // Call this to ensure layout is updated even on initial load if a track was pre-selected (though not in this use case)
         }
 
         // Function to populate the Layout dropdown based on the selected track
@@ -509,7 +509,6 @@
             document.getElementById('trazado').value = '';
             document.getElementById('marcaCoche').value = '';
             document.getElementById('modeloCoche').value = '';
-            // Removed 'anoCoche' from clearForm
             document.getElementById('prCoche').value = '';
             document.getElementById('tiempoVuelta').value = '';
             populateLayoutSelect();
@@ -547,7 +546,6 @@
             const filterTrack = document.getElementById('filterCircuito').value.toLowerCase().trim();
             const filterCarMake = document.getElementById('filterMarcaCoche').value.toLowerCase().trim();
             const filterCarModel = document.getElementById('filterModeloCoche').value.toLowerCase().trim();
-            // Removed filterAnoCoche
             const filterPrCar = document.getElementById('filterPrCoche').value.trim();
 
             if (filterDriverName) {
@@ -570,7 +568,6 @@
                     lap.carModel.toLowerCase().includes(filterCarModel)
                 );
             }
-            // Removed 'if (filterAnoCoche)' block
             if (filterPrCar) { // Filter by PR as a number
                 const prNum = parseInt(filterPrCar, 10);
                 if (!isNaN(prNum)) {
@@ -592,7 +589,6 @@
                 row.insertCell().textContent = lap.layout;
                 row.insertCell().textContent = lap.carMake;
                 row.insertCell().textContent = lap.carModel;
-                // Removed lap.anoCoche
                 row.insertCell().textContent = lap.prCar; // The value is already a number
                 row.insertCell().textContent = lap.lapTime;
 
