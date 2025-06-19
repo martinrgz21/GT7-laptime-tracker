@@ -20,6 +20,8 @@
             --fastest-lap-text: #155724;
             --error-color: #dc3545; /* Red for error messages */
             --success-color: #28a745; /* Green for success messages */
+            --delete-button-color: #dc3545; /* Red for delete button */
+            --delete-button-hover: #c82333; /* Darker red on hover */
 
             /* New Fonts */
             --main-font: 'Roboto', sans-serif;
@@ -113,6 +115,15 @@
             transform: translateY(0);
         }
 
+        .delete-button {
+            background-color: var(--delete-button-color);
+            margin-right: 0; /* Override default button margin */
+        }
+
+        .delete-button:hover {
+            background-color: var(--delete-button-hover);
+        }
+
         .filters {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -137,7 +148,7 @@
             border-radius: 8px;
             overflow: hidden; /* Important for border-radius to apply to content */
             font-family: var(--main-font); /* Roboto for the table */
-            min-width: 700px; /* Ensures the table has a minimum width to enable scrolling on small screens if necessary */
+            min-width: 800px; /* Ensures the table has a minimum width to enable scrolling on small screens if necessary */
         }
 
         table th, table td {
@@ -242,6 +253,12 @@
             color: var(--text-color);
         }
 
+        .message-box .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px; /* Space between buttons */
+        }
+
         .message-box button {
             background-color: var(--primary-color);
             color: white;
@@ -258,6 +275,16 @@
         .message-box button:hover {
             background-color: var(--primary-light-color);
         }
+
+        .message-box button.cancel-button {
+            background-color: var(--border-color);
+            color: var(--text-color);
+        }
+
+        .message-box button.cancel-button:hover {
+            background-color: #aeb4ba; /* Slightly darker gray */
+        }
+
 
         .user-id-display {
             text-align: center;
@@ -335,6 +362,13 @@
             <input type="text" id="tiempoVuelta" pattern="[0-5]?\d:[0-5]?\d:\d{3}" placeholder="Ex: 01:30:123" required>
             <div class="error-message" id="tiempoVueltaError"></div>
         </div>
+        <div class="form-group">
+            <label for="lapVisibility">Lap Visibility:</label>
+            <select id="lapVisibility" required>
+                <option value="public">Public (visible to everyone)</option>
+                <option value="private">Private (visible only to you)</option>
+            </select>
+        </div>
         <button onclick="registrarVuelta()">Register Lap</button>
     </div>
 
@@ -345,8 +379,8 @@
             <div class="form-group">
                 <label for="displayMode">Show Laps:</label>
                 <select id="displayMode" onchange="saveDisplayModePreference(); aplicarFiltros()">
-                    <option value="all">All Laps</option>
-                    <option value="mine">My Laps Only</option>
+                    <option value="all">All Laps (Public + My Private)</option>
+                    <option value="mine">My Laps Only (Public by me + My Private)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -385,6 +419,8 @@
                         <th>PR</th>
                         <th>Time</th>
                         <th>Difference</th>
+                        <th>Visibility</th>
+                        <th>Actions</th> <!-- New column for actions -->
                     </tr>
                 </thead>
                 <tbody>
@@ -405,7 +441,9 @@
         <div class="message-box">
             <h3 id="messageBoxTitle"></h3>
             <p id="messageBoxContent"></p>
-            <button onclick="closeMessageBox()">OK</button>
+            <div class="button-group" id="messageBoxButtons">
+                <!-- Buttons will be dynamically added here -->
+            </div>
         </div>
     </div>
 
@@ -413,14 +451,13 @@
         // Import Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, setDoc, doc, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-        // Firebase configuration provided by the user.
-        // It's important that these values match your actual Firebase project settings.
+        // Firebase configuration (replace with your actual Firebase project config)
         const userProvidedFirebaseConfig = {
           apiKey: "AIzaSyBYBH1FmAakCH9_istuLv7GgJ65CYimE4U",
           authDomain: "gt7-lap-tracker.firebaseapp.com",
-          databaseURL: "https://gt7-lap-tracker-default-rtdb.europe-west1.firebasedatabase.app", // This is for Realtime Database, Firestore is used here
+          databaseURL: "https://gt7-lap-tracker-default-rtdb.europe-west1.firebasedatabase.app",
           projectId: "gt7-lap-tracker",
           storageBucket: "gt7-lap-tracker.firebasestorage.app",
           messagingSenderId: "234690775897",
@@ -428,13 +465,11 @@
           measurementId: "G-B6VQWS2B98"
         };
 
-        // Determine Firebase config and app ID for Canvas environment
-        // Use __firebase_config if available, otherwise fallback to userProvidedFirebaseConfig
+        // Determine Firebase config and app ID for Canvas environment or fallback
         const firebaseConfig = typeof __firebase_config !== 'undefined'
                                ? JSON.parse(__firebase_config)
                                : userProvidedFirebaseConfig;
 
-        // Use __app_id if available, otherwise fallback to firebaseConfig.appId
         const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
 
         // Use __initial_auth_token for authentication if available
@@ -451,7 +486,7 @@
 
         let vueltas = []; // Local array to hold laps fetched from Firestore
 
-        // Gran Turismo 7 Circuits and Layouts
+        // Gran Turismo 7 Circuits and Layouts (This data is fine)
         const circuitosGT7 = {
             "Asia-Pacific": {
                 "Autopolis International Racing Course": [],
@@ -534,14 +569,47 @@
          * Displays a custom message box.
          * @param {string} message - The message content.
          * @param {string} [title='Message'] - The title of the message box.
+         * @param {function} [onConfirm=null] - Callback function for "OK" or "Confirm" action.
+         * @param {function} [onCancel=null] - Callback function for "Cancel" action.
          */
-        function showMessageBox(message, title = 'Message') {
+        function showMessageBox(message, title = 'Message', onConfirm = null, onCancel = null) {
             const overlay = document.getElementById('messageBoxOverlay');
             const titleElement = document.getElementById('messageBoxTitle');
             const contentElement = document.getElementById('messageBoxContent');
+            const buttonGroup = document.getElementById('messageBoxButtons');
 
             titleElement.textContent = title;
             contentElement.textContent = message;
+            buttonGroup.innerHTML = ''; // Clear existing buttons
+
+            if (onConfirm) {
+                // If onConfirm is provided, it's a confirmation dialog
+                const confirmButton = document.createElement('button');
+                confirmButton.textContent = 'OK';
+                confirmButton.onclick = () => {
+                    closeMessageBox();
+                    onConfirm();
+                };
+                buttonGroup.appendChild(confirmButton);
+
+                if (onCancel) {
+                    const cancelButton = document.createElement('button');
+                    cancelButton.textContent = 'Cancel';
+                    cancelButton.classList.add('cancel-button');
+                    cancelButton.onclick = () => {
+                        closeMessageBox();
+                        onCancel();
+                    };
+                    buttonGroup.appendChild(cancelButton);
+                }
+            } else {
+                // If no onConfirm, it's a simple alert-like message
+                const okButton = document.createElement('button');
+                okButton.textContent = 'OK';
+                okButton.onclick = closeMessageBox;
+                buttonGroup.appendChild(okButton);
+            }
+
             overlay.classList.add('visible');
         }
 
@@ -645,13 +713,14 @@
         window.descargarDatos = descargarDatos;
         window.subirDatos = subirDatos;
         window.closeMessageBox = closeMessageBox; // Expose close function
+        window.deleteLap = deleteLap; // Expose deleteLap function
 
         // Event listener for when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', async () => {
             // Populate UI elements immediately, even if Firebase isn't fully ready yet
-            populateTrackSelect(); // Moved this to ensure tracks load regardless of auth
-            populateDriverFilter(); // Populate driver filter based on initial (empty) laps or local data
-            loadDisplayModePreference(); // Load user's preferred display mode
+            populateTrackSelect(); 
+            populateDriverFilter(); 
+            loadDisplayModePreference(); 
 
             // Load driver name from local storage
             const storedDriverName = localStorage.getItem(MY_DRIVER_NAME_KEY);
@@ -660,7 +729,6 @@
             }
 
             // Initialize Firebase App
-            // Only attempt Firebase initialization if API key is present
             if (firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.authDomain) {
                 try {
                     app = initializeApp(firebaseConfig);
@@ -686,18 +754,18 @@
                             userId = user.uid;
                             document.getElementById('currentUserId').textContent = userId;
                             console.log("Firebase authenticated. User ID:", userId);
-                            isAuthReady = true; // Auth is now ready
+                            isAuthReady = true; 
                             
-                            await loadLapsFromFirestore(); // Load laps from Firebase Firestore
-                            populateDriverFilter(); // Re-populate driver filter based on loaded laps
-                            displayLaps(); // Display laps based on loaded data and filters
+                            // Load and display laps only after authentication is ready
+                            await loadLapsFromFirestore(); 
+                            populateDriverFilter(); 
+                            aplicarFiltros(); 
 
                         } else {
-                            // This block might be hit if anonymous sign-in fails or user signs out
                             console.warn("No Firebase user signed in after onAuthStateChanged. Check authentication setup.");
                             document.getElementById('currentUserId').textContent = 'Authentication Failed';
-                            isAuthReady = false; // Auth failed
-                            displayLaps(); // Display what we have, likely empty
+                            isAuthReady = false; 
+                            displayLaps(); 
                         }
                     });
 
@@ -706,47 +774,56 @@
                     showMessageBox("Firebase initialization failed. Please check your console for errors and ensure your Firebase configuration and settings are correct (e.g., Anonymous sign-in enabled, Firestore rules).", "Initialization Error");
                     document.getElementById('currentUserId').textContent = 'Firebase Error';
                     isAuthReady = false;
-                    displayLaps(); // Display what we can without Firebase data
+                    displayLaps(); 
                 }
             } else {
                 showMessageBox("Firebase configuration is missing or incomplete. Data persistence will be disabled. Please update 'firebaseConfig' in the script.", "Configuration Error");
                 document.getElementById('currentUserId').textContent = 'Firebase Not Configured';
-                isAuthReady = false; // Firebase won't be used
-                displayLaps(); // Just display an empty table or whatever is locally available
+                isAuthReady = false; 
+                displayLaps(); 
             }
         });
 
         /**
-         * Loads all lap data from the "laps" collection in Firestore.
-         * The data is sorted by time in milliseconds (fastest first).
+         * Loads all relevant lap data from Firestore (public laps and current user's private laps).
          * Updates the global `vueltas` array.
          */
         async function loadLapsFromFirestore() {
-            if (!isAuthReady || !db || !auth.currentUser) { // Ensure auth is ready and user is signed in
+            if (!isAuthReady || !db || !auth.currentUser) {
                 console.log("Firestore not ready or user not authenticated. Skipping data load.");
-                vueltas = []; // Clear current laps if not ready
-                displayLaps(); // Clear table or show loading message
+                vueltas = []; 
+                displayLaps(); 
                 return;
             }
 
             vueltas = []; // Clear existing laps
             try {
-                // The collection path for public data.
-                // This path implies a structure: artifacts -> {appId} -> public -> data -> laps
-                // Ensure your Firestore security rules allow reading from this path for anonymous users.
-                const lapsCollectionRef = collection(db, `artifacts/${appId}/public/data/laps`);
-                
-                // Firestore queries cannot order by multiple fields or by fields not indexed.
-                // We will fetch all relevant data and sort in-memory.
-                const querySnapshot = await getDocs(lapsCollectionRef);
-
-                querySnapshot.forEach((doc) => {
-                    vueltas.push({ id: doc.id, ...doc.data() }); // Include doc.id for potential future operations
+                // 1. Fetch Public Laps
+                const publicLapsCollectionRef = collection(db, `artifacts/${appId}/public/data/laps`);
+                const publicQuerySnapshot = await getDocs(publicLapsCollectionRef);
+                publicQuerySnapshot.forEach((doc) => {
+                    vueltas.push({ id: doc.id, ...doc.data(), visibility: 'public' });
                 });
-                console.log("Laps loaded from Firestore:", vueltas.length);
+                console.log(`Loaded ${publicQuerySnapshot.size} public laps.`);
+
+                // 2. Fetch Current User's Private Laps
+                // Ensure userId is truly available before trying to fetch private data
+                if (userId && userId !== 'loading' && userId !== 'anonymous_loading' && userId !== 'Firebase Error' && userId !== 'Firebase Not Configured') {
+                    const privateLapsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/laps`);
+                    const privateQuerySnapshot = await getDocs(privateLapsCollectionRef);
+                    privateQuerySnapshot.forEach((doc) => {
+                        vueltas.push({ id: doc.id, ...doc.data(), visibility: 'private' });
+                    });
+                    console.log(`Loaded ${privateQuerySnapshot.size} private laps for user ${userId}.`);
+                } else {
+                    console.warn("User ID not valid for fetching private laps. Skipping private data load.");
+                }
+
+                console.log("Total laps loaded:", vueltas.length);
+
             } catch (e) {
                 console.error("Error loading documents from Firestore: ", e);
-                showMessageBox("Error loading laps. Please check your internet connection or Firebase Firestore security rules. Ensure rules allow read from 'artifacts/{appId}/public/data/laps'.", "Data Load Error");
+                showMessageBox("Error loading laps. Please check your internet connection and Firebase Firestore security rules for both public and private data paths.", "Data Load Error");
             }
         }
 
@@ -762,7 +839,7 @@
 
         /**
          * Registers a new lap by gathering form data, validating it,
-         * and adding it to the Firestore database.
+         * and adding it to the appropriate Firestore collection (public or private).
          */
         async function registrarVuelta() {
             if (!db || !auth.currentUser) {
@@ -778,6 +855,7 @@
             const prCarInput = document.getElementById('prCoche');
             const prCar = prCarInput.value.trim();
             const lapTime = document.getElementById('tiempoVuelta').value.trim();
+            const lapVisibility = document.getElementById('lapVisibility').value; // Get visibility choice
             const lapTimeError = document.getElementById('tiempoVueltaError');
             const prCarError = document.getElementById('prCocheError');
 
@@ -823,11 +901,17 @@
                 timestamp: Date.now() // Timestamp for ordering
             };
 
+            let collectionPath;
+            if (lapVisibility === 'public') {
+                collectionPath = `artifacts/${appId}/public/data/laps`;
+            } else { // 'private'
+                collectionPath = `artifacts/${appId}/users/${userId}/laps`;
+            }
+            newLap.visibility = lapVisibility; // Add visibility property to the stored lap
+
             try {
-                // Add a new document with a generated ID to the "laps" collection under the public path
-                // Ensure your Firestore security rules allow writing to this path for anonymous users.
-                const docRef = await addDoc(collection(db, `artifacts/${appId}/public/data/laps`), newLap);
-                console.log("Lap registered with ID: ", docRef.id);
+                const docRef = await addDoc(collection(db, collectionPath), newLap);
+                console.log(`Lap registered as ${lapVisibility} with ID: `, docRef.id);
                 showMessageBox("Lap registered successfully!", "Success");
 
                 // After successful registration, reload and display laps
@@ -837,7 +921,7 @@
                 clearForm();
             } catch (e) {
                 console.error("Error adding document: ", e);
-                showMessageBox("Error registering lap. Please check your internet connection or Firebase Firestore security rules. Ensure rules allow write to 'artifacts/{appId}/public/data/laps'.", "Registration Error");
+                showMessageBox(`Error registering lap as ${lapVisibility}. Please check your internet connection or Firebase Firestore security rules.`, "Registration Error");
             }
         }
 
@@ -852,6 +936,7 @@
             document.getElementById('modeloCoche').value = '';
             document.getElementById('prCoche').value = '';
             document.getElementById('tiempoVuelta').value = '';
+            document.getElementById('lapVisibility').value = 'public'; // Reset to public
             populateLayoutSelect(); // Reset layout dropdown
         }
 
@@ -864,6 +949,7 @@
 
             filterDriverSelect.innerHTML = '<option value="">All Drivers</option>'; // Always have "All Drivers" option
 
+            // Create a set of unique driver names from all loaded laps
             const uniqueDrivers = new Set(vueltas.map(lap => lap.driverName));
             uniqueDrivers.forEach(driver => {
                 const option = document.createElement('option');
@@ -901,7 +987,9 @@
                 const matchesPr = filterPr === '' || (lap.prCar && lap.prCar.toString().includes(filterPr)); // Check if prCar exists before toString
 
                 let matchesDisplayMode = true;
-                if (displayMode === 'mine' && userId !== 'anonymous_loading' && userId !== 'Firebase Error' && userId !== 'Firebase Not Configured') { // Only filter by 'mine' if a valid userId is available
+                // 'mine' mode: show only laps belonging to the current user (either public or private)
+                // We ensure userId is valid before attempting to filter by it
+                if (displayMode === 'mine' && userId && userId !== 'loading' && userId !== 'anonymous_loading' && userId !== 'Firebase Error' && userId !== 'Firebase Not Configured') {
                     matchesDisplayMode = lap.userId === userId;
                 }
                 
@@ -939,7 +1027,7 @@
             if (lapsToDisplay.length === 0) {
                 const row = tableBody.insertRow();
                 const cell = row.insertCell();
-                cell.colSpan = 8; // Span all columns
+                cell.colSpan = 10; // Updated colspan to include the new 'Actions' column
                 cell.textContent = "No laps to display. Try registering one or adjusting your filters.";
                 cell.style.textAlign = 'center';
                 cell.style.padding = '20px';
@@ -949,6 +1037,8 @@
             const fastestLaps = {}; // Stores the fastest lap for each track/layout combo { 'TrackName_LayoutName': fastestTimeMs }
 
             // First pass: Determine the fastest lap for each unique track/layout
+            // This needs to be done *after* filtering by displayMode, but before adding rows
+            // To ensure "fastest" is relative to the currently displayed set.
             lapsToDisplay.forEach(lap => {
                 const key = `${lap.track}_${lap.layout}`;
                 if (!fastestLaps[key] || lap.lapTimeMs < fastestLaps[key].lapTimeMs) {
@@ -983,8 +1073,71 @@
                 } else {
                     row.insertCell().textContent = ''; // No difference for the fastest lap
                 }
+                row.insertCell().textContent = lap.visibility === 'private' ? 'Private' : 'Public'; // Display visibility
+
+                // Add delete button if the lap belongs to the current user (only for their own laps)
+                const actionCell = row.insertCell();
+                if (lap.userId === userId) { // Only show delete button for the current user's laps
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.classList.add('delete-button');
+                    // Pass lap.id, lap.visibility, and lap.userId to the delete function
+                    deleteButton.onclick = () => deleteLap(lap.id, lap.visibility, lap.userId);
+                    actionCell.appendChild(deleteButton);
+                } else {
+                    actionCell.textContent = ''; // No action for other users' laps
+                }
             });
         }
+
+        /**
+         * Deletes a lap from Firestore.
+         * @param {string} lapId - The ID of the lap document to delete.
+         * @param {string} lapVisibility - 'public' or 'private', to determine the collection path.
+         * @param {string} lapUserId - The userId associated with the lap (used for private laps).
+         */
+        async function deleteLap(lapId, lapVisibility, lapUserId) {
+            if (!db || !auth.currentUser) {
+                showMessageBox("Database not initialized or user not authenticated. Cannot delete lap.", "Error");
+                return;
+            }
+
+            // Confirm deletion with the user
+            showMessageBox(
+                "Are you sure you want to delete this lap record? This action cannot be undone.",
+                "Confirm Deletion",
+                async () => { // onConfirm callback
+                    let collectionPath;
+                    if (lapVisibility === 'public') {
+                        collectionPath = `artifacts/${appId}/public/data/laps`;
+                    } else if (lapVisibility === 'private' && lapUserId === userId) {
+                        // Ensure we are only deleting a private lap if it truly belongs to the current user
+                        collectionPath = `artifacts/${appId}/users/${lapUserId}/laps`;
+                    } else {
+                        showMessageBox("Error: You do not have permission to delete this lap or invalid visibility.", "Permission Denied");
+                        return;
+                    }
+
+                    try {
+                        await deleteDoc(doc(db, collectionPath, lapId));
+                        console.log(`Lap with ID ${lapId} (Visibility: ${lapVisibility}) deleted successfully.`);
+                        showMessageBox("Lap deleted successfully!", "Success");
+                        
+                        // After successful deletion, reload and display laps
+                        await loadLapsFromFirestore();
+                        populateDriverFilter();
+                        aplicarFiltros();
+                    } catch (e) {
+                        console.error("Error deleting document: ", e);
+                        showMessageBox(`Error deleting lap. Please check your internet connection or Firebase Firestore security rules for deletion.`, "Deletion Error");
+                    }
+                },
+                () => { // onCancel callback
+                    console.log("Lap deletion cancelled.");
+                }
+            );
+        }
+
 
         /**
          * Saves the user's preferred display mode ('all' or 'mine') to local storage.
@@ -1008,12 +1161,18 @@
          * Downloads all current lap data as a JSON file.
          */
         function descargarDatos() {
-            const dataStr = JSON.stringify(vueltas, null, 2); // Pretty print JSON
+            // For backup, download all laps (public + private) currently loaded in 'vueltas'
+            const dataToBackup = vueltas.map(lap => {
+                // Exclude the 'id' which is Firestore's document ID, it will be recreated on upload
+                const { id, ...rest } = lap; 
+                return rest;
+            });
+            const dataStr = JSON.stringify(dataToBackup, null, 2); // Pretty print JSON
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'gt7_lap_data_backup.json';
+            a.download = `gt7_lap_data_backup_${userId}.json`; // Include user ID in filename
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1023,7 +1182,8 @@
 
         /**
          * Handles uploading a JSON backup file to restore lap data.
-         * The uploaded data overwrites the current data in Firestore.
+         * Uploaded data will be stored as PRIVATE laps for the current user.
+         * Existing private laps are NOT cleared; new ones are added.
          * @param {Event} event - The file input change event.
          */
         async function subirDatos(event) {
@@ -1046,16 +1206,15 @@
                         return;
                     }
 
-                    // For a public collection like this, adding new docs is generally safer
-                    // than attempting to delete all existing ones without specific user-based queries.
-                    // If you truly need to overwrite, you would need more advanced Firestore operations
-                    // and appropriate security rules (e.g., specific write access for the user uploading).
-                    // This implementation will ADD the laps from the backup.
+                    // For simplicity, all uploaded laps are saved as PRIVATE laps for the current user.
+                    // This prevents unauthorized public uploads and manages data consistently.
+                    const privateCollectionPath = `artifacts/${appId}/users/${userId}/laps`;
 
                     const uploadPromises = uploadedData.map(async (lap) => {
-                        // Ensure required fields for a lap are present. Add userId if missing.
+                        // Ensure required fields for a lap are present.
+                        // Force visibility to 'private' and associate with current userId.
                         const lapToUpload = {
-                            userId: lap.userId || userId, // Use existing userId from backup or current user's ID
+                            userId: userId, 
                             driverName: lap.driverName || 'Unknown Driver',
                             track: lap.track || 'Unknown Track',
                             layout: lap.layout || 'Unknown Layout',
@@ -1064,13 +1223,14 @@
                             prCar: parseInt(lap.prCar, 10) || 0,
                             lapTime: lap.lapTime || '00:00:000',
                             lapTimeMs: timeToMilliseconds(lap.lapTime) || 0,
-                            timestamp: lap.timestamp || Date.now()
+                            timestamp: lap.timestamp || Date.now(),
+                            visibility: 'private' // All uploaded laps become private
                         };
-                        return addDoc(collection(db, `artifacts/${appId}/public/data/laps`), lapToUpload);
+                        return addDoc(collection(db, privateCollectionPath), lapToUpload);
                     });
 
                     await Promise.all(uploadPromises);
-                    showMessageBox("Lap data successfully uploaded and restored! The display will now refresh.", "Restore Complete");
+                    showMessageBox(`Successfully uploaded ${uploadedData.length} laps as private records. The display will now refresh.`, "Restore Complete");
                     
                     // Reload to ensure all data is consistent and filters are reapplied
                     await loadLapsFromFirestore();
